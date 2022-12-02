@@ -1,25 +1,43 @@
+?sidebarLayout
 library(ggplot2)
+library(stringr)
 library(scatterplot3d)
 library(shiny)
-antutu<-read.csv("antutu_android_vs_ios_v4.csv")
-ml_all<-read.csv("ML_ALL_benchmarks.csv")
-smartphone_cpu<-read.csv("smartphone_cpu_stats.csv")
-dataset<-list('antutu scores' = antutu,'Smartphone CPU Scores' = smartphone_cpu,
-              'ML_ALL' = ml_all)
+library(plotly)
+ml_all<-data.frame(read.csv("ml_all.csv"))
+smartphone_cpu = data.frame(read.csv("Smartphone CPU Scores.csv"))
+companynames<-c(smartphone_cpu$company)
+company<-table(smartphone_cpu$company)
+company
+arr<-as.character(company)
+arr
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-    selectInput("SBS","Choose A File",names(dataset)),
-    actionButton("read_file","Read Chosen File"),
+  sidebarLayout(
+    sidebarPanel(
     # Application title
     titlePanel("SmartPhone Benchmark Scores data"),
+    # Dropdown Menu for Different company names
+    selectInput("company_name","Please Select Company name:",smartphone_cpu$company)
+    ),
+    mainPanel(
+      dataTableOutput("tables")
+    )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  sbs<-reactive({input$SBS})
-  sbsbutton<-reactive({input$read_file})
-  
-  
+  company_name<-reactive({input$company_name})
+  observeEvent(input$company_name,{
+      for(x in input$company_name){
+        output$tables<-renderDataTable({
+          filter(smartphone_cpu,x == smartphone_cpu$company)
+        })
+      }
+    })
+    #pie(as.integer(arr),smartphone_cpu$company)
 }
 
 # Run the application 
