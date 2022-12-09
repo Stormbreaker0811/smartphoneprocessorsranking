@@ -2,17 +2,84 @@ library(ggplot2)
 library(stringr)
 library(scatterplot3d)
 library(shiny)
+library(shinyjs)
 library(plotly)
 
 smartphone_cpu <- data.frame(read.csv("Smartphone CPU Scores.csv"))
-
 companynames<-c(smartphone_cpu$company)
-#company<-table(smartphone_cpu$company)
-#company
-#arr<-as.character(company)
-#arr
-barPlot<-function(companyfilter){
-  if(companyfilter == "All"){
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+    # Application title
+    titlePanel("SmartPhone Benchmark Scores data"),
+    # Dropdown Menu for Different company names
+    selectInput("company_name","Please Select Company name:",c("","All",smartphone_cpu$company)),
+    selectInput("plots","Please Select Which plot to plot",c("","Bar Plot","Pie Chart")),
+    actionButton("out","Plot"),
+    actionButton("reset","Clear"),
+    textOutput("predict")
+    ),
+    mainPanel(
+      plotlyOutput("plot"),
+      plotlyOutput("pie"),
+      textOutput("text")
+    )
+  )
+)
+#funcion to plot bar plot..
+plotbar<-function(input1,output){
+  data<-input1
+  if(input1=="All"){
+  samsung<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Samsung"))
+  mediatek<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "MediaTek"))
+  apple<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Apple"))
+  hisilicon<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "HiSilicon"))
+  unisoc<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Unisoc"))
+  qualcomm<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Qualcomm"))
+  google<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Google"))
+  allMaxValues<-c(max(samsung$antutu9),max(mediatek$antutu9),max(apple$antutu9),
+                    max(hisilicon$antutu9),max(unisoc$antutu9),max(qualcomm$antutu9),
+                    max(google$antutu9))
+  maxofMax<-max(allMaxValues)
+  maxofMax
+  prediction<-data.frame(filter(smartphone_cpu,smartphone_cpu$antutu9 == maxofMax))
+  
+  output$plot<-renderPlotly({
+  fig <- plot_ly(
+    x = c(unique(smartphone_cpu$company)),
+    y = allMaxValues,
+    name = "Smartphone CPU Benchmark Data",
+    type = "bar"
+  )
+  
+  fig
+  })
+  output$predict<-renderText({
+    print(paste("The highest antutu ranking in this data set is of: ",prediction$company))
+    print(paste("Having the antutu ranking of: ",prediction$anutu9))
+  })
+  }else{
+    compFilter<-data.frame(filter(smartphone_cpu,input1 == smartphone_cpu$company))
+    prediction<-data.frame(filter(compFilter,compFilter$antutu9 == max(compFilter$antutu9)))
+    output$plot<-renderPlotly({
+    fig <- plot_ly(
+      x = c(compFilter$cpuName),
+      y = compFilter$antutu9,
+      name = "Smartphone ranking data",
+      type = "bar"
+    )
+    fig
+    })
+    output$predict<-renderText({
+      print(paste("The highest antutu ranking in this data set is of: ",prediction$company))
+      print(paste("Having the antutu ranking of: ",prediction$anutu9))
+    })
+  }
+}
+#function to plot poe chart..
+plotpie<-function(input2,output){
+  if(input2=="All"){
     samsung<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Samsung"))
     mediatek<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "MediaTek"))
     apple<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Apple"))
@@ -25,54 +92,55 @@ barPlot<-function(companyfilter){
                     max(google$antutu9))
     maxofMax<-max(allMaxValues)
     maxofMax
-    fig <- plot_ly(
-      x = c("Samsung", "Mediatek", "Apple","HiSilicon", "Unisoc", "Qualcomm","Google"),
-      y = as.integer(allMaxValues),
-      name = "Smartphone CPU Benchmark Data",
-      type = "bar"
-    )
+    output$pie<-renderPlotly({
+    pie <- plot_ly(type='pie', labels=c(unique(smartphone_cpu$company)),
+                    values=allMaxValues, 
+                    textinfo='label+percent',
+                    insidetextorientation='radial')
+    pie
+    })
     
-    fig
   }else{
-    compFilter<-data.frame(filter(smartphone_cpu,companyfilter == smartphone_cpu$company))
-    fig <- plot_ly(
-      #x = c(compFilter$cpuName),
-      y = as.integer(compFilter$antutu9),
-      name = "Smartphone CPU Benchmark Data",
-      type = "bar"
-    )
-    
-    fig
+    compFilter<-data.frame(filter(smartphone_cpu,input2 == smartphone_cpu$company))
+    output$pie<-renderPlotly({
+      pie <- plot_ly(type='pie', labels=c(compFilter$cpuName),
+                     values=compFilter$antutu9, 
+                     textinfo='label+percent',
+                     insidetextorientation='radial')
+      pie
+    })
   }
 }
-# Define UI for application that draws a histogram
-ui <- fluidPage(
-  sidebarLayout(
-    sidebarPanel(
-    # Application title
-    titlePanel("SmartPhone Benchmark Scores data"),
-    # Dropdown Menu for Different company names
-    selectInput("company_name","Please Select Company name:",c("All",smartphone_cpu$company))
-    ),
-    mainPanel(
-      actionButton("piechart","Plot Pie Chart"),
-      actionButton("barPlot","Plot Bar Plot"),
-      plotlyOutput("plot")
-    )
-  )
-)
 
-# Define server logic required to draw a histogram
+# Define server logic required to plot both above graphs
 server <- function(input, output) {
-  ?aes
-  company_name<-reactive({input$company_name})
-  observeEvent(input$company_name,{
-      output$plot<-renderPlotly({
-        barplot(input$company_name)
-        #fig <- plot_ly(y=companyfilter$antutu9, x=companyfilter$cpuName, histfunc='sum', type = "histogram")
-        #fig <- fig %>% layout(yaxis=list(type='linear'))
-        #pie(companyfilter$antutu9,companyfilter$cpuName,diameter = 1)
-      })
+  listen<-reactive({
+    list(input$plots,input$company_name,input$out)
+    })
+  #observing change in events if any and plotting output..
+  observeEvent(listen(),{
+    if(input$company_name!=0){
+      if(input$plots!=0){
+        if(input$out!=0){
+        if(input$plots == "Pie Chart"){
+          plotpie(input$company_name,output)
+        }else if(input$plots == "Bar Plot"){
+          plotbar(input$company_name,output)
+        }
+        }
+      }
+    }else{
+      return(output$text<-renderText({"Please Select Something.."}))
+    }
+    })
+  #Resetting the plot..
+  observeEvent(input$reset,{
+    output$plot<-renderPlotly({
+      
+    })
+    output$pie<-renderPlotly({
+      
+    })
   })
 }
 
