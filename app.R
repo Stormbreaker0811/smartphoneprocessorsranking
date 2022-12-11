@@ -18,12 +18,10 @@ ui <- fluidPage(
     selectInput("plots","Please Select Which plot to plot",c("","Bar Plot","Pie Chart")),
     actionButton("out","Plot"),
     actionButton("reset","Clear"),
-    textOutput("predict")
     ),
     mainPanel(
-      plotlyOutput("plot"),
-      plotlyOutput("pie"),
-      textOutput("text")
+      textOutput("predict"),
+      plotlyOutput("plot")
     )
   )
 )
@@ -47,7 +45,7 @@ plotbar<-function(input1,output){
   
   output$plot<-renderPlotly({
   fig <- plot_ly(
-    x = c(unique(smartphone_cpu$company)),
+    x = c("Samsung","Mediatek","Apple","Hisilicon","Unisoc","Qualcomm","Google"),
     y = allMaxValues,
     name = "Smartphone CPU Benchmark Data",
     type = "bar"
@@ -56,8 +54,7 @@ plotbar<-function(input1,output){
   fig
   })
   output$predict<-renderText({
-    print(paste("The highest antutu ranking in this data set is of: ",prediction$company))
-    print(paste("Having the antutu ranking of: ",prediction$anutu9))
+    paste("The highest antutu ranking in this data set is of: ",prediction$company," Having the antutu ranking of: ",maxofMax)
   })
   }else{
     compFilter<-data.frame(filter(smartphone_cpu,input1 == smartphone_cpu$company))
@@ -71,13 +68,12 @@ plotbar<-function(input1,output){
     )
     fig
     })
-    output$predict<-renderText({
-      print(paste("The highest antutu ranking in this data set is of: ",prediction$company))
-      print(paste("Having the antutu ranking of: ",prediction$anutu9))
+    output$predict<-renderDataTable({
+      prediction
     })
   }
 }
-#function to plot poe chart..
+#function to plot pie chart..
 plotpie<-function(input2,output){
   if(input2=="All"){
     samsung<-data.frame(filter(smartphone_cpu,smartphone_cpu$company == "Samsung"))
@@ -92,17 +88,21 @@ plotpie<-function(input2,output){
                     max(google$antutu9))
     maxofMax<-max(allMaxValues)
     maxofMax
-    output$pie<-renderPlotly({
-    pie <- plot_ly(type='pie', labels=c(unique(smartphone_cpu$company)),
+    output$plot<-renderPlotly({
+    pie <- plot_ly(type='pie', labels=c("Samsung","Mediatek","Apple","HiSillicon","Unisoc","Qualcomm","Google"),
                     values=allMaxValues, 
                     textinfo='label+percent',
                     insidetextorientation='radial')
     pie
     })
+    predict<-data.frame(filter(smartphone_cpu,smartphone_cpu$antutu9 == maxofMax))
+    output$predict<-renderText({
+      paste("The highest antutu ranking in this data set is of: ",predict$company," Having the antutu ranking of: ",maxofMax)
+    })
     
   }else{
     compFilter<-data.frame(filter(smartphone_cpu,input2 == smartphone_cpu$company))
-    output$pie<-renderPlotly({
+    output$plot<-renderPlotly({
       pie <- plot_ly(type='pie', labels=c(compFilter$cpuName),
                      values=compFilter$antutu9, 
                      textinfo='label+percent',
@@ -138,7 +138,7 @@ server <- function(input, output) {
     output$plot<-renderPlotly({
       
     })
-    output$pie<-renderPlotly({
+    output$predict<-renderText({
       
     })
   })
